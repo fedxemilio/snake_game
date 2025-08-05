@@ -5,7 +5,7 @@ import random
 
 pygame.init()
 
-WIDTH, HEIGHT = 600, 400
+WIDTH, HEIGHT = 600, 400 #make bigger
 
 NORMAL_SPEED = 100
 FAST_SPEED = 70
