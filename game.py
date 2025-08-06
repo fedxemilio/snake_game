@@ -22,6 +22,7 @@ BLACK = (0, 0, 0)
 ORANGE = (255, 165, 0)
 PINK = (255, 105, 180)
 CYAN = (0, 255, 255)
+BROWN = (200, 165, 155)
 
 
 NEGG_TYPES = [
@@ -36,6 +37,7 @@ BONUS_NEGGS = [
     (ORANGE, "clear_bombs"),
     (PINK, "cut_tail"),
     (CYAN, "speed_up"),
+    (BROWN, "eat_bombs")
 ]    
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -51,11 +53,14 @@ block_size = 20
 x, y = WIDTH // 2, HEIGHT // 2 #starting position
 direction = 'UP'
 #meerca tail
+COLOR = BLUE
 tail = []
 tail_length = 1 #avoid glitch
 score = 0
 
 speed_boost_timer = 0
+bomb_eater_timer = 0
+BOMB_EATER = False
 
 bombs = []
 is_bonus_negg = False
@@ -159,16 +164,20 @@ while True:
             game_over = True
 
         if (x, y) in bombs:
-            print("Game Over faggot! You just ran straight into a bomb!")
-            death_text = "(You just ran straight into a bomb!)"
-            game_over = True
-
+            if not BOMB_EATER: #bomb collision
+                print("Game Over faggot! You just ran straight into a bomb!")
+                death_text = "(You just ran straight into a bomb!)"
+                game_over = True
+            else:
+                bomb_index = bombs.index((x, y))
+                del bombs[bomb_index]
+                 
         if (x, y) == negg[:2]:
             tail_length += 1
             score += negg[2]["points"]
             negg = spawn_random_negg()
 
-            if random.random() < 0.05:
+            if random.random() < 0.5:
                 is_bonus_negg = True
                 bonus_negg = spawn_random_position()
                 is_bonus_negg = False
@@ -187,7 +196,10 @@ while True:
                 tail_length = max(1, tail_length - 5)
             elif bonus_negg[2][1] == "speed_up":
                 speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
+            elif bonus_negg[2][1] == "eat_bombs":
+                bomb_eater_timer = pygame.time.get_ticks() + 5000
             bonus_negg = None
+            
             
 
         #draw
@@ -197,9 +209,9 @@ while True:
             pygame.draw.rect(screen, bonus_negg[2][0], (bonus_negg[0], bonus_negg[1], block_size, block_size)) #bonusnegg
         for bomb in bombs:
             pygame.draw.rect(screen, RED, (bomb[0], bomb[1], block_size, block_size)) #bomb
-        pygame.draw.rect(screen, BLUE, (x, y, block_size, block_size)) #meerca
+        pygame.draw.rect(screen, COLOR, (x, y, block_size, block_size)) #meerca
         for segment in tail:
-            pygame.draw.rect(screen, BLUE, (segment[0], segment[1], block_size, block_size)) # tail
+            pygame.draw.rect(screen, COLOR, (segment[0], segment[1], block_size, block_size)) # tail
         score_text = font.render(f"Score: {score}", True, BLACK) # score
         screen.blit(score_text, (10, 10))
                              
@@ -209,6 +221,14 @@ while True:
             speed = FAST_SPEED
         else:
             speed = NORMAL_SPEED
+
+        if pygame.time.get_ticks() < bomb_eater_timer:
+            BOMB_EATER = True
+            COLOR = RED
+        else:
+            BOMB_EATER = False
+            COLOR = BLUE
+
             
         clock.tick(1000 // speed)
     else:
