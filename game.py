@@ -177,7 +177,7 @@ while True:
             score += negg[2]["points"]
             negg = spawn_random_negg()
 
-            if random.random() < 0.5:
+            if random.random() < 0.05:
                 is_bonus_negg = True
                 bonus_negg = spawn_random_position()
                 is_bonus_negg = False
