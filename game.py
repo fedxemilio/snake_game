@@ -42,31 +42,15 @@ BONUS_NEGGS = [
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Meerca Chase Clone - Movement, Tail & Neggs")
+clock = pygame.time.Clock()
 
 #fonts
 font = pygame.font.SysFont(None, 32)
 game_over_font = pygame.font.SysFont(None, 64)
 game_over_font2 = pygame.font.SysFont(None, 24)
 
-#meerca set_up
 block_size = 20
-x, y = WIDTH // 2, HEIGHT // 2 #starting position
-direction = 'UP'
-#meerca tail
-COLOR = BLUE
-tail = []
-tail_length = 1 #avoid glitch
-score = 0
 
-speed_boost_timer = 0
-bomb_eater_timer = 0
-BOMB_EATER = False
-
-bombs = []
-is_bonus_negg = False
-bonus_negg = None
-
-#movement
 direction_map = {
     'UP': (0, -block_size),
     'DOWN': (0, block_size),
@@ -88,51 +72,47 @@ right_turn = {
     'RIGHT': 'DOWN'
     }
 
-clock = pygame.time.Clock()
-game_over = False
+class Game:
+    def __init__(self):
+        self.reset()
+        
+    def reset(self):
+        self.player = Player()
+        self.neggs = [Negg()]
+        self.score = 0
+        self.speed_boost_timer = 0
+        self.bomb_eater_timer = 0
+        self.is_bonus_negg = False
+        self.negg = Negg(YELLOW)
+        self.bonus_negg = None
 
-def reset_game():
-    global x, y, direction, tail, tail_length, score, negg, bombs, game_over
-    x, y = WIDTH // 2, HEIGHT // 2
-    direction = 'UP'
-    tail = []
-    tail_length = 1
-    score = 0
-    negg = spawn_random_negg()
-    bombs = []
-    game_over = False
+        self.game_over = False
 
-def spawn_random_negg():
-    weights = [t["weight"] for t in NEGG_TYPES]
-    chosen = random.choices(NEGG_TYPES, weights=weights)[0]
+    def spawn_random_negg(self):
+        weights = [t["weight"] for t in NEGG_TYPES]
+        chosen = random.choices(NEGG_TYPES, weights=weights)[0]
 
-    while True: # prevent spawning on a bomb
-        pos_x, pos_y = spawn_random_position()
-        if (pos_x, pos_y) not in bombs:
-            break
-    return (pos_x, pos_y, chosen) # tuple rather than dict
+        while True: # prevent spawning on a bomb
+            pos_x, pos_y = self.spawn_random_position()
+            if (pos_x, pos_y) not in self.bombs:
+                break
+        return (pos_x, pos_y, chosen) # tuple rather than dict
 
-def spawn_random_position():
-    grid_width = WIDTH // block_size
-    grid_height = HEIGHT // block_size
-    if is_bonus_negg: # bonus negg spawn
+    def spawn_random_position(self):
+        grid_width = WIDTH // block_size
+        grid_height = HEIGHT // block_size
+        if self.is_bonus_negg: # bonus negg spawn
+            return (
+                random.randint(0, grid_width - 1) * block_size,
+                random.randint(0, grid_height - 1) * block_size,
+                random.choices(BONUS_NEGGS)[0]
+            )
         return (
             random.randint(0, grid_width - 1) * block_size,
-            random.randint(0, grid_height - 1) * block_size,
-            random.choices(BONUS_NEGGS)[0]
+            random.randint(0, grid_height - 1) * block_size
         )
-    return (
-        random.randint(0, grid_width - 1) * block_size,
-        random.randint(0, grid_height - 1) * block_size
-    )
 
-negg = spawn_random_negg()
-
-
-#GAME LOOP
-
-while True:
-    if not game_over:
+    def play(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -140,97 +120,137 @@ while True:
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
-                    direction = left_turn[direction] #change direction
+                    self.player.direction = left_turn[self.player.direction] #change direction
                 elif event.key == pygame.K_RIGHT:
-                    direction = right_turn[direction]
+                    self.player.direction = right_turn[self.player.direction]
 
-        #move meerca
-        dx, dy = direction_map[direction]
-        x += dx
-        y += dy
-        #wrap around
-        x %= WIDTH
-        y %= HEIGHT
+        self.player.update()
 
         #update tail
-        if tail_length > 0:
-            tail.insert(0, (x, y))
-            if len(tail) > tail_length:
-                tail.pop()
+        if self.player.tail_length > 0:
+            self.player.tail.insert(0, self.player.position())
+            if len(self.player.tail) > self.player.tail_length:
+                self.player.tail.pop()
 
-        if (x, y) in tail[1:]:
+        if self.player.position() in self.player.tail[1:]:
             print("Game Over faggot! You just hit into your own tail!")
             death_text = "(You just hit into your own tail!)"
-            game_over = True
+            self.game_over = True
 
-        if (x, y) in bombs:
-            if not BOMB_EATER: #bomb collision
-                print("Game Over faggot! You just ran straight into a bomb!")
-                death_text = "(You just ran straight into a bomb!)"
-                game_over = True
-            else:
-                bomb_index = bombs.index((x, y))
-                del bombs[bomb_index]
-                 
-        if (x, y) == negg[:2]:
-            tail_length += 1
-            score += negg[2]["points"]
-            negg = spawn_random_negg()
+        for i, negg in enumerate(self.neggs):
+            if self.player.position() == negg.position():
+                if negg.color == RED:
+                    if not self.player.BOMB_EATER:
+                        death_text = "(You just ran straight into a bomb!)"
+                        self.game_over = True
+                    else:
+                        del self.neggs[i]
+                elif not negg.bonus:
+                    self.player.tail_length += 1
+                    self.score += negg.points
+                    del self.neggs[i]
+                    self.neggs.append(Negg())
 
-            if random.random() < 0.05:
-                is_bonus_negg = True
-                bonus_negg = spawn_random_position()
-                is_bonus_negg = False
+                    if random.random() < 0.05:
+                        self.neggs.append(Negg(True))
 
-            if random.random() < 0.25:
-                bomb_x, bomb_y = spawn_random_position()
-                if (bomb_x, bomb_y) != negg[:2]:
-                    bombs.append((bomb_x, bomb_y))
-
-        if bonus_negg and (x, y) == bonus_negg[:2]:
-            if bonus_negg[2][1] == "clear_bombs":
-                bombs.clear()
-            elif bonus_negg[2][1] == "cut_tail": # logicccc
+                    if random.random() < 0.25:
+                        self.neggs.append(Negg())
+                        self.neggs[-1].color = RED # ??? make it a bomb
+                else:
+                    if negg.color == ORANGE:
+                        del self.neggs[i]
+                        for i, negg in enumerate(self.neggs):
+                            if negg.color == RED:
+                                del self.neggs[i]
+                    
+        if self.bonus_negg and self.player.position() == self.bonus_negg[:2]:
+            if self.bonus_negg[2][1] == "clear_bombs":
+                self.bombs.clear()
+            elif self.bonus_negg[2][1] == "cut_tail": # logicccc
                 for i in range(min(5, tail_length - 1)):
                                tail.pop()
-                tail_length = max(1, tail_length - 5)
-            elif bonus_negg[2][1] == "speed_up":
-                speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
-            elif bonus_negg[2][1] == "eat_bombs":
-                bomb_eater_timer = pygame.time.get_ticks() + 5000
-            bonus_negg = None
+                self.player.tail_length = max(1, tail_length - 5)
+            elif self.bonus_negg[2][1] == "speed_up":
+                self.speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
+            elif self.bonus_negg[2][1] == "eat_bombs":
+                self.bomb_eater_timer = pygame.time.get_ticks() + 5000
+            self.bonus_negg = None
             
-            
-
         #draw
         screen.fill(WHITE)
-        pygame.draw.rect(screen, negg[2]["color"], (negg[0], negg[1], block_size, block_size)) #negg
-        if bonus_negg:
-            pygame.draw.rect(screen, bonus_negg[2][0], (bonus_negg[0], bonus_negg[1], block_size, block_size)) #bonusnegg
-        for bomb in bombs:
-            pygame.draw.rect(screen, RED, (bomb[0], bomb[1], block_size, block_size)) #bomb
-        pygame.draw.rect(screen, COLOR, (x, y, block_size, block_size)) #meerca
-        for segment in tail:
-            pygame.draw.rect(screen, COLOR, (segment[0], segment[1], block_size, block_size)) # tail
-        score_text = font.render(f"Score: {score}", True, BLACK) # score
+        for negg in self.neggs:
+            negg.draw()
+        self.player.draw()
+        score_text = font.render(f"Score: {self.score}", True, BLACK) # score
         screen.blit(score_text, (10, 10))
                              
         pygame.display.flip() #refresh
         #control speed
-        if pygame.time.get_ticks() < speed_boost_timer:
+        if pygame.time.get_ticks() < self.speed_boost_timer:
             speed = FAST_SPEED
         else:
             speed = NORMAL_SPEED
 
-        if pygame.time.get_ticks() < bomb_eater_timer:
-            BOMB_EATER = True
-            COLOR = RED
+        if pygame.time.get_ticks() < self.bomb_eater_timer:
+            self.player.BOMB_EATER = True
+            self.player.color = RED
         else:
-            BOMB_EATER = False
-            COLOR = BLUE
+            self.player.BOMB_EATER = False
+            self.player.color = BLUE
 
             
         clock.tick(1000 // speed)
+        
+
+class Player:
+    def __init__(self):
+        self.x = WIDTH // 2
+        self.y = HEIGHT // 2
+        self.direction = 'UP'
+        self.color = BLUE
+        self.tail = []
+        self.tail_length = 1
+        self.BOMB_EATER = False
+
+    def update(self):
+        dx, dy = direction_map[self.direction]
+        self.x += dx
+        self.y += dy
+        self.x %= WIDTH
+        self.y %= HEIGHT
+
+    def position(self):
+        return (self.x, self.y)
+
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.x, self.y, block_size, block_size)) #meerca
+        for segment in self.tail:
+            pygame.draw.rect(screen, self.color, (segment[0], segment[1], block_size, block_size)) # tail
+
+class Negg:
+    def __init__(self, bonus=False):
+        weights = [t["weight"] for t in NEGG_TYPES]
+        chosen = random.choices(NEGG_TYPES, weights=weights)[0]
+        self.x = random.randint(0, WIDTH // block_size - 1) * block_size
+        self.y = random.randint(0, HEIGHT // block_size - 1) * block_size
+        self.color = chosen.get('color')
+        self.points = chosen.get('points')
+        self.bonus = bonus
+
+    def position(self):
+        return (self.x, self.y)
+    
+    def draw(self):
+        pygame.draw.rect(screen, self.color, (self.x, self.y, block_size, block_size))
+
+
+#GAME LOOP
+game = Game()
+while True:
+    if not game.game_over:
+        game.play()
+
     else:
         screen.fill(WHITE) #game over screen
 
@@ -251,7 +271,7 @@ while True:
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    reset_game()
+                    game.reset()
                 elif event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
