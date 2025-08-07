@@ -34,10 +34,10 @@ NEGG_TYPES = [
 ]
 
 BONUS_NEGGS = [
-    (ORANGE, "clear_bombs"),
-    (PINK, "cut_tail"),
-    (CYAN, "speed_up"),
-    (BROWN, "eat_bombs")
+    {"color": ORANGE, "ability": "clear_bombs"},
+    {"color": PINK, "ability": "cut_tail"},
+    {"color": CYAN, "ability": "speed_up"},
+    {"color": BROWN, "ability": "eat_bombs"}
 ]    
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -78,39 +78,14 @@ class Game:
         
     def reset(self):
         self.player = Player()
-        self.neggs = [Negg()]
+        self.negg = Negg()
+        self.bonus_negg = None
+        self.bombs = []
+        self.powerups = []
         self.score = 0
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
-        self.is_bonus_negg = False
-        self.negg = Negg(YELLOW)
-        self.bonus_negg = None
-
         self.game_over = False
-
-    def spawn_random_negg(self):
-        weights = [t["weight"] for t in NEGG_TYPES]
-        chosen = random.choices(NEGG_TYPES, weights=weights)[0]
-
-        while True: # prevent spawning on a bomb
-            pos_x, pos_y = self.spawn_random_position()
-            if (pos_x, pos_y) not in self.bombs:
-                break
-        return (pos_x, pos_y, chosen) # tuple rather than dict
-
-    def spawn_random_position(self):
-        grid_width = WIDTH // block_size
-        grid_height = HEIGHT // block_size
-        if self.is_bonus_negg: # bonus negg spawn
-            return (
-                random.randint(0, grid_width - 1) * block_size,
-                random.randint(0, grid_height - 1) * block_size,
-                random.choices(BONUS_NEGGS)[0]
-            )
-        return (
-            random.randint(0, grid_width - 1) * block_size,
-            random.randint(0, grid_height - 1) * block_size
-        )
 
     def play(self):
         for event in pygame.event.get():
@@ -125,7 +100,6 @@ class Game:
                     self.player.direction = right_turn[self.player.direction]
 
         self.player.update()
-
         #update tail
         if self.player.tail_length > 0:
             self.player.tail.insert(0, self.player.position())
@@ -133,55 +107,50 @@ class Game:
                 self.player.tail.pop()
 
         if self.player.position() in self.player.tail[1:]:
-            print("Game Over faggot! You just hit into your own tail!")
             death_text = "(You just hit into your own tail!)"
             self.game_over = True
 
-        for i, negg in enumerate(self.neggs):
-            if self.player.position() == negg.position():
-                if negg.color == RED:
-                    if not self.player.BOMB_EATER:
-                        death_text = "(You just ran straight into a bomb!)"
-                        self.game_over = True
-                    else:
-                        del self.neggs[i]
-                elif not negg.bonus:
+        elif self.player.position() in self.bombs:
+            if not self.player.BOMB_EATER:
+                death_text = "(You just ran straight into a bomb!)"
+                self.game_over = True
+            else:
+                bomb_index = self.bombs.index((self.player.x, self.player.y))
+                del self.bombs[bomb_index]
+        
+        elif self.player.position() == self.negg.position():
                     self.player.tail_length += 1
-                    self.score += negg.points
-                    del self.neggs[i]
-                    self.neggs.append(Negg())
+                    self.score += self.negg.points
+                    self.negg = Negg()
 
-                    if random.random() < 0.05:
-                        self.neggs.append(Negg(True))
+                    if random.random() < 0.5:
+                        self.bonus_negg = Negg(True)
 
                     if random.random() < 0.25:
-                        self.neggs.append(Negg())
-                        self.neggs[-1].color = RED # ??? make it a bomb
-                else:
-                    if negg.color == ORANGE:
-                        del self.neggs[i]
-                        for i, negg in enumerate(self.neggs):
-                            if negg.color == RED:
-                                del self.neggs[i]
-                    
-        if self.bonus_negg and self.player.position() == self.bonus_negg[:2]:
-            if self.bonus_negg[2][1] == "clear_bombs":
+                        self.bombs.append(((random.randint(0, WIDTH // block_size - 1) * block_size),
+        (random.randint(0, HEIGHT // block_size - 1) * block_size)))
+        
+        elif self.bonus_negg and self.player.position() == self.bonus_negg.position():
+            if self.bonus_negg.ability == "clear_bombs":
                 self.bombs.clear()
-            elif self.bonus_negg[2][1] == "cut_tail": # logicccc
-                for i in range(min(5, tail_length - 1)):
-                               tail.pop()
-                self.player.tail_length = max(1, tail_length - 5)
-            elif self.bonus_negg[2][1] == "speed_up":
+            elif self.bonus_negg.ability == "cut_tail": # logicccc
+                for i in range(min(5, self.player.tail_length - 1)):
+                    self.player.tail.pop()
+                self.player.tail_length = max(1, self.player.tail_length - 5)
+            elif self.bonus_negg.ability == "speed_up":
                 self.speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
-            elif self.bonus_negg[2][1] == "eat_bombs":
+            elif self.bonus_negg.ability == "eat_bombs":
                 self.bomb_eater_timer = pygame.time.get_ticks() + 5000
             self.bonus_negg = None
             
         #draw
         screen.fill(WHITE)
-        for negg in self.neggs:
-            negg.draw()
+        for bomb in self.bombs:
+            pygame.draw.rect(screen, RED, (bomb[0], bomb[1], block_size, block_size))
         self.player.draw()
+        self.negg.draw()
+        if self.bonus_negg:
+            self.bonus_negg.draw()
         score_text = font.render(f"Score: {self.score}", True, BLACK) # score
         screen.blit(score_text, (10, 10))
                              
@@ -230,14 +199,15 @@ class Player:
 
 class Negg:
     def __init__(self, bonus=False):
+        self.bonus = bonus
         weights = [t["weight"] for t in NEGG_TYPES]
-        chosen = random.choices(NEGG_TYPES, weights=weights)[0]
+        chosen = random.choices(NEGG_TYPES, weights=weights)[0] if not self.bonus else random.choices(BONUS_NEGGS)[0]
         self.x = random.randint(0, WIDTH // block_size - 1) * block_size
         self.y = random.randint(0, HEIGHT // block_size - 1) * block_size
         self.color = chosen.get('color')
         self.points = chosen.get('points')
-        self.bonus = bonus
-
+        self.ability = chosen.get('ability')
+        
     def position(self):
         return (self.x, self.y)
     
