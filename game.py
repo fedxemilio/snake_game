@@ -10,6 +10,8 @@ WIDTH, HEIGHT = 600, 400 #make bigger
 NORMAL_SPEED = 100
 FAST_SPEED = 70
 
+BOMB_PROB = 0.05
+
 WHITE = (255, 255, 255)
 GREY = (128, 128, 128)
 BLUE = (0, 0, 255)
@@ -48,6 +50,7 @@ clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 32)
 game_over_font = pygame.font.SysFont(None, 64)
 game_over_font2 = pygame.font.SysFont(None, 24)
+death_text = "You Died"
 
 block_size = 20
 
@@ -123,7 +126,7 @@ class Game:
                     self.score += self.negg.points
                     self.negg = Negg()
 
-                    if random.random() < 0.5:
+                    if random.random() < BOMB_PROB:
                         self.bonus_negg = Negg(True)
 
                     if random.random() < 0.25:
@@ -226,7 +229,7 @@ while True:
 
         game_over_text = game_over_font.render("Game Over, you faggot", True, RED)
         game_over_text2 = game_over_font2.render(death_text, True, ORANGE)
-        score_text = font.render(f"Final Score: {score}", True, BLACK)
+        score_text = font.render(f"Final Score: {game.score}", True, BLACK)
         prompt_text = font.render("Press R to reset or Q to quit", True, BLACK)
 
         screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, 100))
