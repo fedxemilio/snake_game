@@ -110,17 +110,19 @@ class Game:
             if len(self.player.tail) > self.player.tail_length:
                 self.player.tail.pop()
 
+        for bomb in self.bombs:
+            if self.player.position() == bomb.position():
+                if not self.player.BOMB_EATER:
+                    death_text = "(You just ran straight into a bomb!)"
+                    self.game_over = True
+                else:
+                    bomb_index = self.bombs.index(bomb)
+                    del self.bombs[bomb_index]
+
         if self.player.position() in self.player.tail[1:]:
             death_text = "(You just hit into your own tail!)"
             self.game_over = True
 
-        elif self.player.position() in self.bombs:
-            if not self.player.BOMB_EATER:
-                death_text = "(You just ran straight into a bomb!)"
-                self.game_over = True
-            else:
-                bomb_index = self.bombs.index((self.player.x, self.player.y))
-                del self.bombs[bomb_index]
         
         elif self.player.position() == self.negg.position():
                     self.player.tail_length += 1
@@ -131,8 +133,7 @@ class Game:
                         self.bonus_negg = Negg(True)
 
                     if random.random() < BOMB_PROB:
-                        self.bombs.append(((random.randint(0, WIDTH // block_size - 1) * block_size),
-        (random.randint(0, HEIGHT // block_size - 1) * block_size)))
+                        self.bombs.append(Bomb())
         
         elif self.bonus_negg and self.player.position() == self.bonus_negg.position():
             if self.bonus_negg.ability == "clear_bombs":
@@ -146,11 +147,14 @@ class Game:
             elif self.bonus_negg.ability == "eat_bombs":
                 self.bomb_eater_timer = pygame.time.get_ticks() + 5000
             self.bonus_negg = None
+
+        
+         
             
         #draw
         screen.fill(WHITE)
         for bomb in self.bombs:
-            pygame.draw.rect(screen, RED, (bomb[0], bomb[1], block_size, block_size))
+            bomb.draw()
         self.player.draw()
         self.negg.draw()
         if self.bonus_negg:
@@ -217,6 +221,17 @@ class Negg:
     
     def draw(self):
         pygame.draw.rect(screen, self.color, (self.x, self.y, block_size, block_size))
+
+class Bomb:
+    def __init__(self):
+        self.x = random.randint(0, WIDTH // block_size - 1) * block_size
+        self.y = random.randint(0, HEIGHT // block_size - 1) * block_size
+
+    def position(self):
+        return (self.x, self.y)
+
+    def draw(self):
+        pygame.draw.rect(screen, 'RED', (self.x, self.y, block_size, block_size))
 
 
 #GAME LOOP
