@@ -10,7 +10,8 @@ WIDTH, HEIGHT = 600, 400 #make bigger
 NORMAL_SPEED = 100
 FAST_SPEED = 70
 
-BOMB_PROB = 0.05
+BONUS_PROB = 0.05
+BOMB_PROB = 0.25
 
 WHITE = (255, 255, 255)
 GREY = (128, 128, 128)
@@ -126,10 +127,10 @@ class Game:
                     self.score += self.negg.points
                     self.negg = Negg()
 
-                    if random.random() < BOMB_PROB:
+                    if random.random() < BONUS_PROB:
                         self.bonus_negg = Negg(True)
 
-                    if random.random() < 0.25:
+                    if random.random() < BOMB_PROB:
                         self.bombs.append(((random.randint(0, WIDTH // block_size - 1) * block_size),
         (random.randint(0, HEIGHT // block_size - 1) * block_size)))
         
