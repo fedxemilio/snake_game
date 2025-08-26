@@ -1,47 +1,11 @@
-# add 1-hit shield, sturdy time for taking out bombs, map, levels, graphics
 import pygame
 import sys
 import random
+from constants import *
+from player import Player
+from objects import Negg, Bomb
 
 pygame.init()
-
-WIDTH, HEIGHT = 600, 400 #make bigger
-
-NORMAL_SPEED = 100
-FAST_SPEED = 70
-
-BONUS_PROB = 0.05
-BOMB_PROB = 0.25
-
-WHITE = (255, 255, 255)
-GREY = (128, 128, 128)
-BLUE = (0, 0, 255)
-BLUE_NEGG = (0, 128, 255)
-YELLOW = (255, 255, 0)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
-PURPLE = (255, 0, 255)
-BLACK = (0, 0, 0)
-ORANGE = (255, 165, 0)
-PINK = (255, 105, 180)
-CYAN = (0, 255, 255)
-BROWN = (200, 165, 155)
-
-
-NEGG_TYPES = [
-    {"color": YELLOW, "points": 1, "weight": 80},
-    {"color": GREEN, "points": 5, "weight": 12},
-    {"color": BLUE_NEGG, "points": 10, "weight": 5},
-    {"color": PURPLE, "points": 25, "weight": 2},
-    {"color": GREY, "points": 100, "weight": 1},
-]
-
-BONUS_NEGGS = [
-    {"color": ORANGE, "ability": "clear_bombs"},
-    {"color": PINK, "ability": "cut_tail"},
-    {"color": CYAN, "ability": "speed_up"},
-    {"color": BROWN, "ability": "eat_bombs"}
-]    
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Meerca Chase Clone - Movement, Tail & Neggs")
@@ -52,29 +16,6 @@ font = pygame.font.SysFont(None, 32)
 game_over_font = pygame.font.SysFont(None, 64)
 game_over_font2 = pygame.font.SysFont(None, 24)
 death_text = "You Died"
-
-block_size = 20
-
-direction_map = {
-    'UP': (0, -block_size),
-    'DOWN': (0, block_size),
-    'LEFT': (-block_size, 0),
-    'RIGHT': (block_size, 0)
-    }
-
-left_turn = {
-    'UP': 'LEFT',
-    'DOWN': 'RIGHT',
-    'LEFT': 'DOWN',
-    'RIGHT': 'UP'
-    }
-
-right_turn = {
-    'UP': 'RIGHT',
-    'DOWN': 'LEFT',
-    'LEFT': 'UP',
-    'RIGHT': 'DOWN'
-    }
 
 class Game:
     def __init__(self):
@@ -89,7 +30,7 @@ class Game:
         self.score = 0
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
-        self.game_over = False
+        self.state = 'playing'
 
     def play(self):
         for event in pygame.event.get():
@@ -113,15 +54,15 @@ class Game:
         for bomb in self.bombs:
             if self.player.position() == bomb.position():
                 if not self.player.BOMB_EATER:
-                    death_text = "(You just ran straight into a bomb!)"
-                    self.game_over = True
+                    self.state = 'game over'
+                    return 'game over'
                 else:
                     bomb_index = self.bombs.index(bomb)
                     del self.bombs[bomb_index]
 
         if self.player.position() in self.player.tail[1:]:
-            death_text = "(You just hit into your own tail!)"
-            self.game_over = True
+            self.state = 'game over'
+            return 'game over'
 
         
         elif self.player.position() == self.negg.position():
@@ -147,18 +88,15 @@ class Game:
             elif self.bonus_negg.ability == "eat_bombs":
                 self.bomb_eater_timer = pygame.time.get_ticks() + 5000
             self.bonus_negg = None
-
-        
-         
-            
+ 
         #draw
         screen.fill(WHITE)
         for bomb in self.bombs:
-            bomb.draw()
-        self.player.draw()
-        self.negg.draw()
+            bomb.draw(screen)
+        self.player.draw(screen)
+        self.negg.draw(screen)
         if self.bonus_negg:
-            self.bonus_negg.draw()
+            self.bonus_negg.draw(screen)
         score_text = font.render(f"Score: {self.score}", True, BLACK) # score
         screen.blit(score_text, (10, 10))
                              
@@ -178,74 +116,13 @@ class Game:
 
             
         clock.tick(1000 // speed)
-        
 
-class Player:
-    def __init__(self):
-        self.x = WIDTH // 2
-        self.y = HEIGHT // 2
-        self.direction = 'UP'
-        self.color = BLUE
-        self.tail = []
-        self.tail_length = 1
-        self.BOMB_EATER = False
-
-    def update(self):
-        dx, dy = direction_map[self.direction]
-        self.x += dx
-        self.y += dy
-        self.x %= WIDTH
-        self.y %= HEIGHT
-
-    def position(self):
-        return (self.x, self.y)
-
-    def draw(self):
-        pygame.draw.rect(screen, self.color, (self.x, self.y, block_size, block_size)) #meerca
-        for segment in self.tail:
-            pygame.draw.rect(screen, self.color, (segment[0], segment[1], block_size, block_size)) # tail
-
-class Negg:
-    def __init__(self, bonus=False):
-        self.bonus = bonus
-        weights = [t["weight"] for t in NEGG_TYPES]
-        chosen = random.choices(NEGG_TYPES, weights=weights)[0] if not self.bonus else random.choices(BONUS_NEGGS)[0]
-        self.x = random.randint(0, WIDTH // block_size - 1) * block_size
-        self.y = random.randint(0, HEIGHT // block_size - 1) * block_size
-        self.color = chosen.get('color')
-        self.points = chosen.get('points')
-        self.ability = chosen.get('ability')
-        
-    def position(self):
-        return (self.x, self.y)
-    
-    def draw(self):
-        pygame.draw.rect(screen, self.color, (self.x, self.y, block_size, block_size))
-
-class Bomb:
-    def __init__(self):
-        self.x = random.randint(0, WIDTH // block_size - 1) * block_size
-        self.y = random.randint(0, HEIGHT // block_size - 1) * block_size
-
-    def position(self):
-        return (self.x, self.y)
-
-    def draw(self):
-        pygame.draw.rect(screen, 'RED', (self.x, self.y, block_size, block_size))
-
-
-#GAME LOOP
-game = Game()
-while True:
-    if not game.game_over:
-        game.play()
-
-    else:
-        screen.fill(WHITE) #game over screen
+    def game_over(self):
+        screen.fill(WHITE)
 
         game_over_text = game_over_font.render("Game Over, you faggot", True, RED)
         game_over_text2 = game_over_font2.render(death_text, True, ORANGE)
-        score_text = font.render(f"Final Score: {game.score}", True, BLACK)
+        score_text = font.render(f"Final Score: {self.score}", True, BLACK)
         prompt_text = font.render("Press R to reset or Q to quit", True, BLACK)
 
         screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, 100))
@@ -260,22 +137,9 @@ while True:
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r:
-                    game.reset()
+                    self.reset()
                 elif event.key == pygame.K_q:
                     pygame.quit()
                     sys.exit()
-        
-                     
-
-    
-
-
-
-
-
-
-
-
-
 
 
