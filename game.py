@@ -30,7 +30,7 @@ class Game:
         self.score = 0
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
-        self.game_over = False
+        self.state = 'playing'
 
     def play(self):
         for event in pygame.event.get():
@@ -54,15 +54,15 @@ class Game:
         for bomb in self.bombs:
             if self.player.position() == bomb.position():
                 if not self.player.BOMB_EATER:
-                    death_text = "(You just ran straight into a bomb!)"
-                    self.game_over = True
+                    self.state = 'game over'
+                    return 'game over'
                 else:
                     bomb_index = self.bombs.index(bomb)
                     del self.bombs[bomb_index]
 
         if self.player.position() in self.player.tail[1:]:
-            death_text = "(You just hit into your own tail!)"
-            self.game_over = True
+            self.state = 'game over'
+            return 'game over'
 
         
         elif self.player.position() == self.negg.position():
@@ -117,6 +117,29 @@ class Game:
             
         clock.tick(1000 // speed)
 
+    def game_over(self):
+        screen.fill(WHITE)
 
+        game_over_text = game_over_font.render("Game Over, you faggot", True, RED)
+        game_over_text2 = game_over_font2.render(death_text, True, ORANGE)
+        score_text = font.render(f"Final Score: {self.score}", True, BLACK)
+        prompt_text = font.render("Press R to reset or Q to quit", True, BLACK)
+
+        screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, 100))
+        screen.blit(game_over_text2, (WIDTH // 2 - game_over_text2.get_width() // 2, 150))
+        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 180))
+        screen.blit(prompt_text, (WIDTH // 2 - prompt_text.get_width() // 2, 240))
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    self.reset()
+                elif event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
 
 
