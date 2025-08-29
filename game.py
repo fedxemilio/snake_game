@@ -101,7 +101,8 @@ class Game:
         pygame.display.flip()
 
     def get_help_menu(self):
-        while True:
+        open = True
+        while open:
             pan_width, pan_height = WIDTH*4/5, HEIGHT*4/5
             panel = pygame.Surface((pan_width, pan_height))
             panel.fill(BLACK)
@@ -120,15 +121,12 @@ class Game:
                 self.draw_text(BONUS_NEGGS[i].get('description'), WIDTH*2/5 + block_size + y_padding, y, WHITE, size=16, centered=False)
 
             pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    open = False
+                    break
             
-            back_btn = self.draw_text("Back", WIDTH*9/10, HEIGHT//20, BLACK)
-            events = pygame.event.get()
-            mouse = pygame.mouse.get_pos()
-            clicked = any(event.type == pygame.MOUSEBUTTONDOWN for event in events)
-
-            if back_btn.collidepoint(mouse) and clicked:
-                break
-
     def settings(self):
         events = pygame.event.get()
         screen.fill(BLACK)
