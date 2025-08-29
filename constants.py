@@ -40,8 +40,8 @@ NEGG_TYPES = [
 ]
 
 BONUS_NEGGS = [
-    {"color": ORANGE, "ability": "clear_bombs"},
-    {"color": PINK, "ability": "cut_tail"},
-    {"color": CYAN, "ability": "speed_up"},
-    {"color": BROWN, "ability": "eat_bombs"}
+    {"color": ORANGE, "ability": "clear_bombs", "description": "removes all bombs from the screen"},
+    {"color": PINK, "ability": "cut_tail", "description": "shortens your snakes tail"},
+    {"color": CYAN, "ability": "speed_up", "description": "you temporarily move faster"},
+    {"color": BROWN, "ability": "eat_bombs", "description": "you can temporarily eat bombs"}
 ]  

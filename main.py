@@ -8,6 +8,8 @@ while True:
         game.play()
     elif game.state == 'menu':
         game.main_menu()
+    elif game.state == 'help':
+        game.help_menu()
     elif game.state == 'settings':
         game.settings()
     elif game.state == 'game over':
