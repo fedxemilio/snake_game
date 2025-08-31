@@ -23,6 +23,28 @@ LEVELS = [
      "------------------------------",
      "------------------------------",
      "------------------------------"
+     ],
+
+     ["------------------------------",
+     "---11111----------------------",
+     "---1---1----------------------",
+     "------------------------------",
+     "---1---1----1--1--------------",
+     "---11111----1--1--------------",
+     "------------1--1--------------",
+     "------------1--1--------------",
+     "--------11111--11111----------",
+     "------------------------------",
+     "------------------------------",
+     "--------11111--11111----------",
+     "------------1--1--------------",
+     "------------1--1--------------",
+     "------------1--1------11111---",
+     "------------1--1------1---1---",
+     "------------------------------",
+     "----------------------1---1---",
+     "----------------------11111---",
+     "------------------------------"
      ]
 ]
 
@@ -30,6 +52,7 @@ class Level:
     def __init__(self):
         self.level_index = 0
         self.map = LEVELS[self.level_index]
+        self.level_goal = (self.level_index + 1) * 50
 
     def draw_level(self, screen):
         for y in range(HEIGHT // block_size):
@@ -37,8 +60,13 @@ class Level:
                 if self.map[y][x] in "123":
                     pygame.draw.rect(screen, BLACK, (x*block_size, y*block_size, block_size, block_size))
 
-    # accepts pixel coordinates
+    #accepts pixel coordinates
     def is_wall(self, coords):
         return self.map[coords[1] // block_size][coords[0] // block_size] in "123"
+    
+    def advance_level(self):
+        self.level_index += 1
+        self.map = LEVELS[self.level_index]
+        self.level_goal = (self.level_index + 1) * 500
 
                     

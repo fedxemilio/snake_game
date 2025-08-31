@@ -197,11 +197,18 @@ class Game:
                     self.state = 'game over'
                     return 'game over'
 
-        
         if self.player.position() == self.negg.position():
             self.player.tail_length += 1
             self.score += self.negg.points
-            self.negg = Negg()
+            while True:
+                self.negg = Negg() #avoid spawning on bombs or walls
+                if self.level:
+                    if self.level.is_wall((self.negg.x, self.negg.y)):
+                        continue
+                for bomb in self.bombs:
+                    if (self.negg.x, self.negg.y) == (bomb.x, bomb.y):
+                        continue
+                break
 
             if random.random() < BONUS_PROB:
                 self.bonus_negg = Negg(True)
@@ -221,6 +228,13 @@ class Game:
             elif self.bonus_negg.ability == "eat_bombs":
                 self.bomb_eater_timer = pygame.time.get_ticks() + 5000
             self.bonus_negg = None
+
+        if self.level:
+            if self.score >= self.level.level_goal:
+                self.bombs.clear()
+                self.bonus_negg = None
+                self.level.advance_level()
+                self.negg = Negg()
  
         #draw
         screen.fill(WHITE)
