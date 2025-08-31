@@ -26,7 +26,7 @@ class Game:
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
         self.state = 'menu'
-        self.mode = 'free'
+        self.mode = 'levels'
         self.level = None
 
     def draw_text(self, text, x, y, color, size=36, centered=True):
@@ -179,6 +179,7 @@ class Game:
             if len(self.player.tail) > self.player.tail_length:
                 self.player.tail.pop()
 
+        #collisions
         for bomb in self.bombs:
             if self.player.position() == bomb.position():
                 if not self.player.BOMB_EATER:
@@ -229,12 +230,15 @@ class Game:
                 self.bomb_eater_timer = pygame.time.get_ticks() + 5000
             self.bonus_negg = None
 
+        #level clear
         if self.level:
             if self.score >= self.level.level_goal:
+                self.level_complete()
                 self.bombs.clear()
                 self.bonus_negg = None
                 self.level.advance_level()
                 self.negg = Negg()
+                self.player = Player()
  
         #draw
         screen.fill(WHITE)
@@ -266,6 +270,24 @@ class Game:
             self.player.color = BLUE
 
         clock.tick(1000 // speed)
+
+    def level_complete(self):
+        open = True
+        while open:
+            pan_width, pan_height = WIDTH*4/5, HEIGHT*4/5
+            panel = pygame.Surface((pan_width, pan_height))
+            panel.fill(BLACK)
+            screen.blit(panel, (WIDTH//2 - pan_width//2, HEIGHT//2 - pan_height//2))
+
+            self.draw_text("Level Complete!", WIDTH//2, HEIGHT*2/5, WHITE, size=64)
+            self.draw_text("Press Any Key To Continue", WIDTH//2, HEIGHT*3/5, WHITE)
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    open = False
+                    break
 
     def game_over(self):
         screen.fill(WHITE)
