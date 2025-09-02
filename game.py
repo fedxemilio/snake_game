@@ -3,6 +3,7 @@ import sys
 import random
 from constants import *
 from player import Player
+from level import Level
 from objects import Negg, Bomb
 
 pygame.init()
@@ -17,14 +18,36 @@ class Game:
         
     def reset(self):
         self.player = Player()
-        self.negg = Negg()
-        self.bonus_negg = None
+        self.level = None
         self.bombs = []
+        self.bonus_negg = None
         self.powerups = []
         self.score = 0
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
         self.state = 'menu'
+        self.mode = 'levels'
+
+    def new_negg(self):
+        while True:
+            self.negg = Negg() #avoid spawning on bombs or walls
+            if self.level is not None and self.level.is_wall((self.negg.x, self.negg.y)):
+                continue
+            bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
+            if bomb_collision:
+                continue
+            break
+    def new_bomb(self):
+        while True:
+            new_bomb = Bomb()
+            if self.level:
+                if self.level.is_wall((new_bomb.x, new_bomb.y)):
+                    continue
+            if (self.negg.x, self.negg.y) == (new_bomb.x, new_bomb.y):
+                    continue
+            break
+        self.bombs.append(new_bomb)
+   
 
     def draw_text(self, text, x, y, color, size=36, centered=True):
         font = pygame.font.SysFont(None, size)
@@ -54,7 +77,10 @@ class Game:
         pygame.display.flip()
 
         if start_btn.collidepoint(mouse) and clicked:
+            if self.mode == 'levels':
+                self.level = Level()
             self.state = 'playing'
+            self.new_negg()
             return 'playing'
         elif help_btn.collidepoint(mouse) and clicked:
             self.state = 'help'
@@ -133,7 +159,7 @@ class Game:
         self.draw_text("Settings", WIDTH // 2, HEIGHT * 1/4, WHITE, size=48)
 
         start_btn = self.draw_text("Start Game", WIDTH // 2, HEIGHT // 2, WHITE)
-        settings_btn = self.draw_text("Settings", WIDTH // 2, HEIGHT * 2/3, WHITE)
+        mode_btn = self.draw_text(f"Mode: {self.mode}", WIDTH // 2, HEIGHT * 2/3, WHITE)
         back_btn = self.draw_text("Back", WIDTH // 2, HEIGHT * 3/4, WHITE)
 
         mouse = pygame.mouse.get_pos()
@@ -144,9 +170,11 @@ class Game:
         if start_btn.collidepoint(mouse) and clicked:
             self.state = 'playing'
             return 'playing'
-        elif settings_btn.collidepoint(mouse) and clicked:
-            self.state = 'settings'
-            return 'settings'
+        elif mode_btn.collidepoint(mouse) and clicked:
+            if self.mode == 'free':
+                self.mode = 'levels'
+            else: 
+                self.mode = 'free'
         elif back_btn.collidepoint(mouse) and clicked:
             self.state = 'menu'
             return 'menu'
@@ -172,6 +200,7 @@ class Game:
             if len(self.player.tail) > self.player.tail_length:
                 self.player.tail.pop()
 
+        #collisions
         for bomb in self.bombs:
             if self.player.position() == bomb.position():
                 if not self.player.BOMB_EATER:
@@ -184,34 +213,47 @@ class Game:
         if self.player.position() in self.player.tail[1:]:
             self.state = 'game over'
             return 'game over'
-
         
-        elif self.player.position() == self.negg.position():
-                    self.player.tail_length += 1
-                    self.score += self.negg.points
-                    self.negg = Negg()
+        if self.level:
+            if self.level.is_wall(self.player.position()):
+                    self.state = 'game over'
+                    return 'game over'
 
-                    if random.random() < BONUS_PROB:
-                        self.bonus_negg = Negg(True)
+        if self.player.position() == self.negg.position():
+            self.player.tail_length += 1
+            self.score += self.negg.points
+            self.new_negg()
 
-                    if random.random() < BOMB_PROB:
-                        self.bombs.append(Bomb())
-        
-        elif self.bonus_negg and self.player.position() == self.bonus_negg.position():
-            if self.bonus_negg.ability == "clear_bombs":
+            if random.random() < BONUS_PROB:
+                while True:
+                    self.bonus_negg = Negg(True)
+                    if self.level:
+                        if self.level.is_wall((self.negg.x, self.negg.y)):
+                            continue
+                    bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
+                    if bomb_collision:
+                        continue
+                    break
+
+            if random.random() < BOMB_PROB:
+                self.new_bomb()
+
+        #level clear
+        if self.level:
+            if self.score >= self.level.level_goal:
+                self.level_complete()
                 self.bombs.clear()
-            elif self.bonus_negg.ability == "cut_tail": # logicccc
-                for i in range(min(5, self.player.tail_length - 1)):
-                    self.player.tail.pop()
-                self.player.tail_length = max(1, self.player.tail_length - 5)
-            elif self.bonus_negg.ability == "speed_up":
-                self.speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
-            elif self.bonus_negg.ability == "eat_bombs":
-                self.bomb_eater_timer = pygame.time.get_ticks() + 5000
-            self.bonus_negg = None
+                self.bonus_negg = None
+                self.level.advance_level()
+                self.negg = Negg()
+                self.player = Player()
  
         #draw
         screen.fill(WHITE)
+
+        if self.level:
+            self.level.draw_level(screen)
+
         for bomb in self.bombs:
             bomb.draw(screen)
         self.player.draw(screen)
@@ -236,6 +278,24 @@ class Game:
             self.player.color = BLUE
 
         clock.tick(1000 // speed)
+
+    def level_complete(self):
+        open = True
+        while open:
+            pan_width, pan_height = WIDTH*4/5, HEIGHT*4/5
+            panel = pygame.Surface((pan_width, pan_height))
+            panel.fill(BLACK)
+            screen.blit(panel, (WIDTH//2 - pan_width//2, HEIGHT//2 - pan_height//2))
+
+            self.draw_text("Level Complete!", WIDTH//2, HEIGHT*2/5, WHITE, size=64)
+            self.draw_text("Press Any Key To Continue", WIDTH//2, HEIGHT*3/5, WHITE)
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    open = False
+                    break
 
     def game_over(self):
         screen.fill(WHITE)
