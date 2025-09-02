@@ -37,6 +37,17 @@ class Game:
             if bomb_collision:
                 continue
             break
+    def new_bomb(self):
+        while True:
+            new_bomb = Bomb()
+            if self.level:
+                if self.level.is_wall((new_bomb.x, new_bomb.y)):
+                    continue
+            if (self.negg.x, self.negg.y) == (new_bomb.x, new_bomb.y):
+                    continue
+            break
+        self.bombs.append(new_bomb)
+   
 
     def draw_text(self, text, x, y, color, size=36, centered=True):
         font = pygame.font.SysFont(None, size)
@@ -224,30 +235,8 @@ class Game:
                         continue
                     break
 
-
             if random.random() < BOMB_PROB:
-                while True:
-                    new_bomb = Bomb()
-                    if self.level:
-                        if self.level.is_wall((new_bomb.x, new_bomb.y)):
-                            continue
-                    if (self.negg.x, self.negg.y) == (new_bomb.x, new_bomb.y):
-                            continue
-                    break
-                self.bombs.append(new_bomb)
-        
-        elif self.bonus_negg and self.player.position() == self.bonus_negg.position():
-            if self.bonus_negg.ability == "clear_bombs":
-                self.bombs.clear()
-            elif self.bonus_negg.ability == "cut_tail": # logicccc
-                for i in range(min(5, self.player.tail_length - 1)):
-                    self.player.tail.pop()
-                self.player.tail_length = max(1, self.player.tail_length - 5)
-            elif self.bonus_negg.ability == "speed_up":
-                self.speed_boost_timer = pygame.time.get_ticks() + 5000 #5 secs from now
-            elif self.bonus_negg.ability == "eat_bombs":
-                self.bomb_eater_timer = pygame.time.get_ticks() + 5000
-            self.bonus_negg = None
+                self.new_bomb()
 
         #level clear
         if self.level:
