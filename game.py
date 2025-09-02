@@ -18,16 +18,25 @@ class Game:
         
     def reset(self):
         self.player = Player()
-        self.negg = Negg()
-        self.bonus_negg = None
+        self.level = None
         self.bombs = []
+        self.bonus_negg = None
         self.powerups = []
         self.score = 0
         self.speed_boost_timer = 0
         self.bomb_eater_timer = 0
         self.state = 'menu'
         self.mode = 'levels'
-        self.level = None
+
+    def new_negg(self):
+        while True:
+            self.negg = Negg() #avoid spawning on bombs or walls
+            if self.level is not None and self.level.is_wall((self.negg.x, self.negg.y)):
+                continue
+            bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
+            if bomb_collision:
+                continue
+            break
 
     def draw_text(self, text, x, y, color, size=36, centered=True):
         font = pygame.font.SysFont(None, size)
@@ -60,6 +69,7 @@ class Game:
             if self.mode == 'levels':
                 self.level = Level()
             self.state = 'playing'
+            self.new_negg()
             return 'playing'
         elif help_btn.collidepoint(mouse) and clicked:
             self.state = 'help'
@@ -201,15 +211,7 @@ class Game:
         if self.player.position() == self.negg.position():
             self.player.tail_length += 1
             self.score += self.negg.points
-            while True:
-                self.negg = Negg() #avoid spawning on bombs or walls
-                if self.level and self.level.is_wall((self.negg.x, self.negg.y)):
-                    continue
-                bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
-                if bomb_collision:
-                    continue
-                break
-                
+            self.new_negg()
 
             if random.random() < BONUS_PROB:
                 while True:
