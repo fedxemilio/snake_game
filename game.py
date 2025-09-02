@@ -203,19 +203,36 @@ class Game:
             self.score += self.negg.points
             while True:
                 self.negg = Negg() #avoid spawning on bombs or walls
-                if self.level:
-                    if self.level.is_wall((self.negg.x, self.negg.y)):
-                        continue
-                for bomb in self.bombs:
-                    if (self.negg.x, self.negg.y) == (bomb.x, bomb.y):
-                        continue
+                if self.level and self.level.is_wall((self.negg.x, self.negg.y)):
+                    continue
+                bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
+                if bomb_collision:
+                    continue
                 break
+                
 
             if random.random() < BONUS_PROB:
-                self.bonus_negg = Negg(True)
+                while True:
+                    self.bonus_negg = Negg(True)
+                    if self.level:
+                        if self.level.is_wall((self.negg.x, self.negg.y)):
+                            continue
+                    bomb_collision = any((self.negg.x, self.negg.y) == (bomb.x, bomb.y) for bomb in self.bombs)
+                    if bomb_collision:
+                        continue
+                    break
+
 
             if random.random() < BOMB_PROB:
-                self.bombs.append(Bomb())
+                while True:
+                    new_bomb = Bomb()
+                    if self.level:
+                        if self.level.is_wall((new_bomb.x, new_bomb.y)):
+                            continue
+                    if (self.negg.x, self.negg.y) == (new_bomb.x, new_bomb.y):
+                            continue
+                    break
+                self.bombs.append(new_bomb)
         
         elif self.bonus_negg and self.player.position() == self.bonus_negg.position():
             if self.bonus_negg.ability == "clear_bombs":
